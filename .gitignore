@@ -1,0 +1,25 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Files the Sidekick writes while it works
+sandbox/
+.playwright-mcp/
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

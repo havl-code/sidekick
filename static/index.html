@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Sidekick</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FF7A1A'/%3E%3Cpath d='M18 5 9 18h6l-1 9 9-13h-6z' fill='%23140A02'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M13.5 2 5 14h6l-1 8 8.5-12h-6z"/></svg>
+      </div>
+      <div>
+        <div class="eyebrow">Your personal co-worker</div>
+        <h1>Sidekick</h1>
+      </div>
+    </div>
+    <div class="status" id="status" data-state="connecting" role="status" aria-live="polite">
+      <span class="status-dot"></span><span class="status-text">Starting tools…</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="chat-column" aria-label="Conversation">
+      <div class="chat" id="chat">
+        <div class="empty" id="empty">
+          <div class="empty-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M13.5 2 5 14h6l-1 8 8.5-12h-6z"/></svg>
+          </div>
+          <h2>What should we get done?</h2>
+          <p>Sidekick can browse the web, search, read Wikipedia, write files to its sandbox and ping your phone.
+             Give it a task and tell it what “done” looks like.</p>
+          <div class="suggestions" id="suggestions">
+            <button type="button" class="chip"
+              data-message="Find the cheapest return flight from Auckland to Wellington next month"
+              data-criteria="A specific flight with airline, dates and price in NZD">Cheapest flight to Wellington</button>
+            <button type="button" class="chip"
+              data-message="Research the history of the flat white and write a short summary to flat-white.md"
+              data-criteria="A markdown file in the sandbox with 3-5 key milestones and dates">Flat white history to a file</button>
+            <button type="button" class="chip"
+              data-message="What are today's top 3 technology news headlines?"
+              data-criteria="Three headlines, each with a one-line summary and source">Today’s tech headlines</button>
+          </div>
+        </div>
+      </div>
+
+      <form class="composer" id="composer" autocomplete="off">
+        <label class="field">
+          <span class="field-label">Request</span>
+          <textarea id="message" rows="1" placeholder="Ask Sidekick to do something…" required></textarea>
+        </label>
+        <label class="field field-criteria">
+          <span class="field-label">Success criteria</span>
+          <input id="criteria" type="text" placeholder="What does a great answer look like? (optional)">
+        </label>
+        <div class="actions">
+          <span class="hint" id="hint"><kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</span>
+          <div class="buttons">
+            <button type="button" class="btn btn-ghost" id="reset">Reset</button>
+            <button type="button" class="btn btn-stop" id="stop" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              <span>Stop</span>
+            </button>
+            <button type="submit" class="btn btn-primary" id="go" disabled>
+              <span>Go</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <aside class="sidebar">
+      <section class="panel plan" aria-label="Plan">
+        <div class="plan-head">
+          <h2>Plan</h2>
+          <span class="plan-count" id="plan-count"></span>
+        </div>
+        <div class="progress" aria-hidden="true"><div class="progress-bar" id="progress-bar"></div></div>
+        <div id="plan-body">
+          <p class="plan-empty">Sidekick will write its plan here as it works.</p>
+        </div>
+      </section>
+
+      <section class="panel files" aria-label="Files">
+        <div class="plan-head">
+          <h2>Files</h2>
+          <span class="plan-count" id="files-count"></span>
+        </div>
+        <div id="files-body">
+          <p class="plan-empty">Files Sidekick saves to its sandbox will appear here.</p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="alert" hidden></div>
+</body>
+</html>
