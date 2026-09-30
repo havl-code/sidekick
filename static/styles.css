@@ -97,6 +97,26 @@ h1 {
   letter-spacing: -0.01em;
 }
 
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+
+.github-link {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.github-link:hover {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  transform: translateY(-1px);
+}
+
 .status {
   display: inline-flex;
   align-items: center;

@@ -368,6 +368,15 @@ class Sidekick:
                         step["state"] = "failed" if getattr(message, "status", "") == "error" else "done"
         self._seen = len(messages)
 
+    def _settle_todos(self, succeeded: bool):
+        """The worker gives its final answer without a tool call, so it never ticks off the last steps
+        of its plan. Once the turn is over, nothing is still in progress: if the answer passed, every
+        step is done; otherwise the unfinished ones go back to pending."""
+        self.todos = [
+            {**todo, "status": "completed" if succeeded or todo.get("status") == "completed" else "pending"}
+            for todo in self.todos
+        ]
+
     async def _advance(self, payload, history: list) -> list:
         while True:
             result = None
@@ -397,6 +406,7 @@ class Sidekick:
 
             if verdict.success_criteria_met or verdict.user_input_needed or self.attempts >= MAX_ATTEMPTS:
                 status = "met" if verdict.success_criteria_met else "needs_input" if verdict.user_input_needed else "not_met"
+                self._settle_todos(status == "met")
                 steps = [
                     {"label": s["label"], "state": s["state"]}
                     for s in self.activity
@@ -434,6 +444,7 @@ class Sidekick:
         for step in self.activity:
             if step["state"] == "running":
                 step["state"] = "failed"
+        self._settle_todos(False)
         added = [request] if request else []
         return history + added + [{"role": "notice", "content": "You stopped this task."}]
 

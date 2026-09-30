@@ -13,7 +13,7 @@
 
 1. **The worker** is a LangChain `create_agent` running `gpt-5.4-mini`. It searches the web (Serper, with links and dates), reads pages as plain text, looks things up on Wikipedia, drives a real browser through Playwright MCP when a page needs clicking or JavaScript, reads and writes files through a filesystem MCP server locked to `sandbox/`, and can send push notifications through Pushover. Its prompt tells it to research in parallel batches, cite every source with a date, and always deliver the result rather than stopping to ask permission.
 2. **The evaluator** reads the worker's reply alongside the recent conversation and every tool call made this turn, with a snippet of each result. It judges the reply against my success criteria as written, marks it as met, needing me, or not met, and sends the worker back with feedback at most once.
-3. **Middleware** gives the worker a to-do list that shows up live in the Plan panel, redacts email addresses and card numbers, caps model calls per run, and pauses for my decision before it sends a notification or asks me to take over the browser.
+3. **Middleware** gives the worker a to-do list that shows up live in the Plan panel (settled when the turn ends, since the final reply never ticks off the last step), redacts email addresses and card numbers, caps model calls per run, and pauses for my decision before it sends a notification or asks me to take over the browser.
 4. **The web app** runs each request as a task the UI can stop, and turns every tool call into a plain-English step ("Searching the web", "Saving notes/wellington.md") that streams into the chat while the agent works.
 
 ## Run it
