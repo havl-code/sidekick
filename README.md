@@ -9,6 +9,10 @@
 
 **sidekick** is my personal co-worker: a general-purpose AI agent that can drive a real web browser, search the web, read Wikipedia, write files to a sandbox, and send a push notification to my phone. I use it for everyday tasks and planning first, then study and research, travel and shopping, and job hunting. I give it a task plus what "done" looks like, and it keeps working until an evaluator agrees the job is actually finished.
 
+## Preview
+
+![sidekick screenshot](docs/screenshot.png)
+
 ## How it works
 
 1. **The worker** is a LangChain `create_agent` running `gpt-5.4-mini`. It searches the web (Serper, with links and dates), reads pages as plain text, looks things up on Wikipedia, drives a real browser through Playwright MCP when a page needs clicking or JavaScript, reads and writes files through a filesystem MCP server locked to `sandbox/`, and can send push notifications through Pushover. Its prompt tells it to research in parallel batches, cite every source with a date, and always deliver the result rather than stopping to ask permission.
