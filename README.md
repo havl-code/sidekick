@@ -1,11 +1,16 @@
 # sidekick
 
-[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
-[![JavaScript](https://img.shields.io/badge/javascript-vanilla-f7df1e)](static/app.js)
-[![HTML](https://img.shields.io/badge/html-5-e34c26)](static/index.html)
-[![CSS](https://img.shields.io/badge/css-3-264de4)](static/styles.css)
-[![LangChain](https://img.shields.io/badge/LangChain-LangGraph-1c3c3c)](https://docs.langchain.com/)
-[![Licence](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
+[![Tests](https://github.com/havl-code/sidekick/actions/workflows/tests.yml/badge.svg)](https://github.com/havl-code/sidekick/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?logo=langchain&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?logo=langgraph&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
+![CSS](https://img.shields.io/badge/CSS-1572B6?logo=css&logoColor=white)
+![pytest](https://img.shields.io/badge/pytest-0A9EDC?logo=pytest&logoColor=white)
+![uv](https://img.shields.io/badge/uv-DE5FE9?logo=uv&logoColor=white)
+![Licence: MIT](https://img.shields.io/badge/licence-MIT-FF7A1A)
 
 **sidekick** is my personal co-worker: a general-purpose AI agent that can drive a real web browser, search the web, read Wikipedia, write files to a sandbox, and send a push notification to my phone. I use it for everyday tasks and planning first, then study and research, travel and shopping, and job hunting. I give it a task plus what "done" looks like, and it keeps working until an evaluator agrees the job is actually finished.
 
@@ -38,6 +43,14 @@ The app opens at [http://127.0.0.1:7860](http://127.0.0.1:7860). The first start
 | `PUSHOVER_USER`, `PUSHOVER_TOKEN` | Push notifications (optional) |
 | `LANGSMITH_*` | Tracing in LangSmith (optional) |
 
+## Tests
+
+```bash
+uv run pytest
+```
+
+The tests cover the Sidekick's own logic (activity labels, the evaluator's trace, plan and stop handling), the search and page tools, and the web app's endpoints, including the sandbox path check. They swap in fake responses for web requests and never call the model or start the MCP servers, so they need no API keys. GitHub Actions runs them on Python 3.12 and 3.13 for every push and pull request.
+
 ## Project layout
 
 ```text
@@ -45,6 +58,7 @@ app.py              FastAPI server: sessions, turns, decisions, stop, sandbox fi
 sidekick.py         The worker prompt, middleware, evaluator loop, and live activity tracking
 sidekick_tools.py   Search, page reader, Wikipedia, notifications, and the trimmed MCP servers
 static/             The frontend (index.html, styles.css, app.js)
+tests/              pytest suite, run on every push by .github/workflows/tests.yml
 sandbox/            Created at runtime; the only folder the agent can write to
 ```
 
@@ -62,6 +76,7 @@ sandbox/            Created at runtime; the only folder the agent can write to
 - **An honest verdict.** The history the backend returns is structured by role (user, assistant, evaluator, approval, notice) rather than prefixed strings. The UI shows each verdict as Met, Needs you, or Not fully met, including when the worker ran out of attempts, and shows the success criteria under each request.
 - **A Files panel.** New `/api/files` endpoints list and download everything in the sandbox, with a path check so nothing outside it can be fetched.
 - **Its own project.** A standalone `pyproject.toml`, so `uv run app.py` works without the course's shared environment.
+- **Tests and CI.** A pytest suite that runs offline, with GitHub Actions running it on every push.
 
 ## Acknowledgements
 
