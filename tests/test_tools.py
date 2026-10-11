@@ -4,7 +4,17 @@ import requests
 from bs4 import BeautifulSoup
 
 import sidekick_tools
-from sidekick_tools import MCP_TOOLS, PAGE_CHAR_LIMIT, _around, _published_date, fetch_page, mcp_connections, web_search
+from sidekick_tools import (
+    MCP_TOOLS,
+    PAGE_CHAR_LIMIT,
+    WIKIPEDIA_CHAR_LIMIT,
+    _around,
+    _published_date,
+    fetch_page,
+    mcp_connections,
+    web_search,
+    wikipedia,
+)
 
 
 class FakeResponse:
@@ -73,6 +83,38 @@ def test_web_search_formats_results(monkeypatch):
 def test_web_search_with_no_results(monkeypatch):
     monkeypatch.setattr(sidekick_tools.requests, "post", lambda *args, **kwargs: FakeResponse({}))
     assert web_search.invoke({"query": "zzz"}) == "No results. Try different words."
+
+
+def test_wikipedia_returns_summaries_in_search_order(monkeypatch):
+    data = {
+        "query": {
+            "pages": [
+                {"index": 2, "title": "Second", "fullurl": "https://en.wikipedia.org/wiki/Second", "extract": "Two."},
+                {"index": 1, "title": "First", "fullurl": "https://en.wikipedia.org/wiki/First", "extract": "One."},
+            ]
+        }
+    }
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append(kwargs)
+        return FakeResponse(data)
+
+    monkeypatch.setattr(sidekick_tools.requests, "get", fake_get)
+    result = wikipedia.invoke({"query": "numbers"})
+    assert result.index("Page: First") < result.index("Page: Second")
+    assert "https://en.wikipedia.org/wiki/First\nSummary: One." in result
+    assert calls[0]["params"]["gsrsearch"] == "numbers"
+    assert calls[0]["headers"]["User-Agent"] == sidekick_tools.USER_AGENT
+
+
+def test_wikipedia_cuts_long_summaries_and_handles_no_match(monkeypatch):
+    long_page = {"query": {"pages": [{"index": 1, "title": "Long", "extract": "x" * 10_000}]}}
+    monkeypatch.setattr(sidekick_tools.requests, "get", lambda *args, **kwargs: FakeResponse(long_page))
+    assert len(wikipedia.invoke({"query": "long"})) == WIKIPEDIA_CHAR_LIMIT
+
+    monkeypatch.setattr(sidekick_tools.requests, "get", lambda *args, **kwargs: FakeResponse({"batchcomplete": True}))
+    assert wikipedia.invoke({"query": "zzz"}).startswith("No good Wikipedia match")
 
 
 def test_mcp_connections_point_the_filesystem_at_the_sandbox():

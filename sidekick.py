@@ -42,6 +42,7 @@ load_dotenv(override=True)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SANDBOX = os.path.join(HERE, "sandbox")
+MODEL = "gpt-6-luna"  # OpenAI's efficiency model, for both the worker and the evaluator
 MAX_ATTEMPTS = 2  # each retry resends the whole conversation, so keep this low
 DEFAULT_CRITERIA = "The answer should be clear, correct and complete"
 TRACE_BUDGET = 9000  # characters of tool evidence the evaluator sees, shared across all calls
@@ -242,7 +243,8 @@ class Sidekick:
         os.makedirs(SANDBOX, exist_ok=True)
         self.tools, self.sessions = await get_all_tools(SANDBOX)
         self.worker = create_agent(
-            model="openai:gpt-5.4-mini",
+            # GPT-6 models only call tools while reasoning through the Responses API
+            model=ChatOpenAI(model=MODEL, use_responses_api=True),
             tools=self.tools,
             system_prompt=f"{WORKER_PROMPT}\n\nToday is {datetime.now():%A %d %B %Y}.",
             middleware=[
@@ -265,9 +267,9 @@ class Sidekick:
         )
         # A little reasoning costs a few hundred tokens per check, and saves whole retries caused by
         # a snap judgement that fails a good answer
-        self.evaluator = ChatOpenAI(model="gpt-5.4-mini", reasoning_effort="low").with_structured_output(
-            EvaluatorOutput
-        )
+        self.evaluator = ChatOpenAI(
+            model=MODEL, reasoning_effort="low", use_responses_api=True
+        ).with_structured_output(EvaluatorOutput)
 
     @property
     def config(self):

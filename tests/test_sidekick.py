@@ -1,11 +1,14 @@
 """Tests for the Sidekick's own logic: the activity labels, the evaluator's trace and the turn bookkeeping.
 None of these call a model or start the MCP servers."""
 
+import asyncio
 import os
 
 from langchain_core.messages import AIMessage, ToolMessage
 
+import sidekick as sidekick_module
 from sidekick import (
+    MODEL,
     SANDBOX,
     Sidekick,
     clip,
@@ -113,3 +116,27 @@ def test_after_stop_starts_a_fresh_thread_and_fails_running_steps():
     assert sidekick._fresh_thread and not sidekick.paused
     assert sidekick.activity[0]["state"] == "failed"
     assert history == [request, {"role": "notice", "content": "You stopped this task."}]
+
+
+def test_setup_runs_the_worker_and_evaluator_on_the_responses_api(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+    async def no_tools(sandbox):
+        return [], None
+
+    made = []
+
+    class RecordingChatOpenAI(sidekick_module.ChatOpenAI):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            made.append(self)
+
+    monkeypatch.setattr(sidekick_module, "get_all_tools", no_tools)
+    monkeypatch.setattr(sidekick_module, "ChatOpenAI", RecordingChatOpenAI)
+    sidekick = Sidekick()
+    asyncio.run(sidekick.setup())
+
+    assert sidekick.worker is not None and sidekick.evaluator is not None
+    assert [model.model_name for model in made] == [MODEL, MODEL]
+    assert all(model.use_responses_api for model in made)
+    assert made[1].reasoning_effort == "low"

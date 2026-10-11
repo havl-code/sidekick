@@ -1,4 +1,4 @@
-"""Tools for the Sidekick: a mix of MCP servers, ready-made LangChain tools and our own.
+"""Tools for the Sidekick: a mix of MCP servers and our own.
 
 Every tool's description is sent with every model call, and every tool result stays in the
 conversation, so tokens matter here: our tools return compact text, the MCP servers are
@@ -15,11 +15,8 @@ from contextlib import AsyncExitStack
 from datetime import date
 
 import requests
-import wikipedia
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from langchain_community.tools import WikipediaQueryRun
-from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_core.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -30,17 +27,12 @@ USER_AGENT = "Mozilla/5.0 (compatible; sidekick/0.1; +https://github.com/havl-co
 PAGE_CHAR_LIMIT = 6000
 SEARCH_RESULTS = 8
 PAGE_CACHE_SECONDS = 30 * 60
+WIKIPEDIA_RESULTS = 2
+WIKIPEDIA_CHAR_LIMIT = 3000
 BLOCK_TAGS = [
     "p", "div", "li", "tr", "br", "section", "article", "table", "ul", "ol",
     "h1", "h2", "h3", "h4", "h5", "h6", "dt", "dd", "blockquote", "pre",
 ]
-
-# Wikimedia rejects the wikipedia library's default user agent, so identify ourselves properly
-wikipedia.set_user_agent(USER_AGENT)
-
-wikipedia_lookup = WikipediaQueryRun(
-    api_wrapper=WikipediaAPIWrapper(top_k_results=2, doc_content_chars_max=3000)
-)
 
 # The MCP tools the Sidekick needs. The servers offer 39 between them; sending only these
 # saves roughly 3,500 tokens on every model call and gives the model fewer ways to wander.
@@ -74,6 +66,28 @@ def web_search(query: str) -> str:
         dated = f" ({result['date']})" if result.get("date") else ""
         lines.append(f"{i}. {result.get('title', '')}{dated}\n   {result.get('link', '')}\n   {result.get('snippet', '')}")
     return "\n".join(lines) or "No results. Try different words."
+
+
+@tool
+def wikipedia(query: str) -> str:
+    """Look up a topic on Wikipedia. Returns the summary of the best-matching articles,
+    each with its link. Good for background and history on well-known topics."""
+    # One request searches and fetches each article's plain-text summary. Wikimedia rejects
+    # requests without a proper user agent, so identify ourselves.
+    response = requests.get(
+        "https://en.wikipedia.org/w/api.php",
+        headers={"User-Agent": USER_AGENT},
+        params={
+            "action": "query", "format": "json", "formatversion": 2, "redirects": 1,
+            "generator": "search", "gsrsearch": query, "gsrlimit": WIKIPEDIA_RESULTS,
+            "prop": "extracts|info", "exintro": 1, "explaintext": 1, "inprop": "url",
+        },
+        timeout=15,
+    )
+    response.raise_for_status()
+    pages = sorted(response.json().get("query", {}).get("pages", []), key=lambda page: page.get("index", 0))
+    summaries = [f"Page: {page['title']}\n{page.get('fullurl', '')}\nSummary: {page.get('extract', '')}" for page in pages]
+    return "\n\n".join(summaries)[:WIKIPEDIA_CHAR_LIMIT] or "No good Wikipedia match. Try different words, or web_search."
 
 
 def _published_date(soup: BeautifulSoup, headers) -> str:
@@ -248,5 +262,5 @@ async def get_all_tools(sandbox: str):
     """Return the full tool list (our tools plus the MCP tools we keep) and the session holder."""
     sessions = McpSessions(mcp_connections(sandbox))
     mcp_tools = [t for t in await sessions.start() if t.name in MCP_TOOLS]
-    our_tools = [web_search, fetch_page, wikipedia_lookup, send_push_notification, request_human_help]
+    our_tools = [web_search, fetch_page, wikipedia, send_push_notification, request_human_help]
     return our_tools + mcp_tools, sessions

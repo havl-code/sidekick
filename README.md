@@ -20,14 +20,14 @@
 
 ## How it works
 
-1. **The worker** is a LangChain `create_agent` running `gpt-5.4-mini`. It searches the web (Serper, with links and dates), reads pages as plain text, looks things up on Wikipedia, drives a real browser through Playwright MCP when a page needs clicking or JavaScript, reads and writes files through a filesystem MCP server locked to `sandbox/`, and can send push notifications through Pushover. Its prompt tells it to research in parallel batches, cite every source with a date, and always deliver the result rather than stopping to ask permission.
+1. **The worker** is a LangChain `create_agent` running OpenAI's `gpt-6-luna` through the Responses API (GPT-6 models only call tools while reasoning there). It searches the web (Serper, with links and dates), reads pages as plain text, looks things up on Wikipedia, drives a real browser through Playwright MCP when a page needs clicking or JavaScript, reads and writes files through a filesystem MCP server locked to `sandbox/`, and can send push notifications through Pushover. Its prompt tells it to research in parallel batches, cite every source with a date, and always deliver the result rather than stopping to ask permission.
 2. **The evaluator** reads the worker's reply alongside the recent conversation and every tool call made this turn, with a snippet of each result. It judges the reply against my success criteria as written, marks it as met, needing me, or not met, and sends the worker back with feedback at most once.
 3. **Middleware** gives the worker a to-do list that shows up live in the Plan panel (settled when the turn ends, since the final reply never ticks off the last step), redacts email addresses and card numbers, caps model calls per run, and pauses for my decision before it sends a notification or asks me to take over the browser.
 4. **The web app** runs each request as a task the UI can stop, and turns every tool call into a plain-English step ("Searching the web", "Saving notes/wellington.md") that streams into the chat while the agent works.
 
 ## Run it
 
-You need [uv](https://docs.astral.sh/uv/) and [Node.js](https://nodejs.org/) (for `npx`, which starts the MCP servers).
+You need [uv](https://docs.astral.sh/uv/) and [Node.js](https://nodejs.org/) (for `npx`, which starts the MCP servers). The project runs on Python 3.14 by default (any version from 3.12 works), and uv downloads it for you if it is missing.
 
 ```bash
 cp .env.example .env   # then fill in your keys
@@ -49,7 +49,7 @@ The app opens at [http://127.0.0.1:7860](http://127.0.0.1:7860). The first start
 uv run pytest
 ```
 
-The tests cover the Sidekick's own logic (activity labels, the evaluator's trace, plan and stop handling), the search and page tools, and the web app's endpoints, including the sandbox path check. They swap in fake responses for web requests and never call the model or start the MCP servers, so they need no API keys. GitHub Actions runs them on Python 3.12 and 3.13 for every push and pull request.
+The tests cover the Sidekick's own logic (activity labels, the evaluator's trace, plan and stop handling), the search, page and Wikipedia tools, and the web app's endpoints, including the sandbox path check. They swap in fake responses for web requests and never call the model or start the MCP servers, so they need no API keys. GitHub Actions runs them on Python 3.12, 3.13 and 3.14 for every push and pull request.
 
 ## Project layout
 
@@ -70,6 +70,8 @@ sandbox/            Created at runtime; the only folder the agent can write to
 - **Stop a run part way.** Each run is a cancellable `asyncio` task. Stopping can leave the agent's thread ending in a tool call with no result, which the model would reject, so the Sidekick starts a clean thread and hands the next turn a short recap of the conversation.
 - **Approve or decline, not just approve.** The original could only approve paused actions. Declining sends a `reject` decision to `HumanInTheLoopMiddleware`, with my optional reason, so the worker carries on without the action. Browser help requests read "I've done it" or "I can't do it", and new requests are blocked while a decision is pending.
 - **Search results with sources.** The original used LangChain's `GoogleSerperRun`, which returns snippets only, with no links, titles or dates, so the agent could not cite or date anything. It is replaced by a `web_search` tool that calls Serper directly and returns each result's title, link, date and snippet.
+- **Current models.** The worker and evaluator run on `gpt-6-luna`, OpenAI's efficiency model, instead of `gpt-5.4-mini`. It is newer, has a 1M-token context, and costs $0.10 per million input tokens against $0.75. The model is set in one place (`MODEL` in `sidekick.py`).
+- **Off `langchain-community`.** LangChain retired `langchain-community` in 2026, and the `wikipedia` library it wrapped has not been updated since 2014. The Wikipedia tool now calls Wikipedia's API directly in one request, returns each article's link so the agent can cite it, and drops 12 packages (including NumPy, SQLAlchemy and aiohttp) from the install.
 - **A fast page reader.** A new `fetch_page` tool reads pages over HTTP and turns them into compact text with the page's published date, instead of opening the browser. A `find` argument returns only the paragraphs that mention a phrase, and pages are cached for 30 minutes, so reading another part of a page is instant.
 - **Lower token use.** Every tool definition goes out with every model call, so only the 17 MCP tools the Sidekick uses are kept, out of 39. That cuts the tool definitions sent per call from about 7,300 tokens to 3,400. The browser runs with `--snapshot-mode none` and `--image-responses omit`, so clicks and page loads no longer send the whole page back as a snapshot or image. `ContextEditingMiddleware` swaps old tool results for a placeholder once the conversation passes 50k tokens, and the evaluator retries at most once, since each retry resends the whole conversation.
 - **An evaluator that checks evidence fairly.** The original evaluator saw only the latest message and the names of every tool called in the whole thread. This one sees the recent conversation (so follow-ups make sense) and all of this turn's tool calls, with result snippets that share a fixed budget. It runs with low reasoning effort and is told to judge the criteria as written. It fails replies that refuse or stall instead of delivering, but not replies that honestly flag what could not be found. Retry feedback is marked as internal, so it never leaks into the final answer.
